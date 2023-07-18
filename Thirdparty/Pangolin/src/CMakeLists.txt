@@ -630,7 +630,7 @@ endif()
 
 set(INSTALL_INCLUDE_DIR "include")
 
-add_library(${LIBRARY_NAME} STATIC ${SOURCES} ${HEADERS})
+add_library(${LIBRARY_NAME} ${SOURCES} ${HEADERS})
 # 'System' includes shield us from warnings in those includes.
 target_include_directories(${LIBRARY_NAME} SYSTEM PUBLIC ${USER_INC} PRIVATE ${INTERNAL_INC})
 target_include_directories(${LIBRARY_NAME} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
