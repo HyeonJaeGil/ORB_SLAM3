@@ -804,6 +804,10 @@ namespace ORB_SLAM3
 
             for(int i=0; i<nRows; i++)
             {
+                // skip the last 1 rows
+                if (i >= nRows - 1)
+                    continue;
+
                 const float iniY =minBorderY+i*hCell;
                 float maxY = iniY+hCell+6;
 
@@ -823,37 +827,46 @@ namespace ORB_SLAM3
 
                     vector<cv::KeyPoint> vKeysCell;
 
-                    FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
+                    cv::Mat patches = mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX);
+                    // double min, max;
+                    // cv::minMaxLoc(patches, &min, &max);
+                    // double contrast_factor = 1.5;
+                    // int new_min = (int)(min/contrast_factor);
+                    // int new_max = contrast_factor * max < 255 ? (int)(contrast_factor * max) : 255;
+                    // cv::Mat patches_8U;
+                    // cv::normalize(patches, patches_8U, new_min, new_max, cv::NORM_MINMAX, CV_8UC1);
+
+                    FAST(patches,
                          vKeysCell,iniThFAST,true);
 
                     /*if(bRight && j <= 13){
-                        FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
+                        FAST(patches,
                              vKeysCell,10,true);
                     }
                     else if(!bRight && j >= 16){
-                        FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
+                        FAST(patches,
                              vKeysCell,10,true);
                     }
                     else{
-                        FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
+                        FAST(patches,
                              vKeysCell,iniThFAST,true);
                     }*/
 
 
                     if(vKeysCell.empty())
                     {
-                        FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
+                        FAST(patches,
                              vKeysCell,minThFAST,true);
                         /*if(bRight && j <= 13){
-                            FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
+                            FAST(patches,
                                  vKeysCell,5,true);
                         }
                         else if(!bRight && j >= 16){
-                            FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
+                            FAST(patches,
                                  vKeysCell,5,true);
                         }
                         else{
-                            FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
+                            FAST(patches,
                                  vKeysCell,minThFAST,true);
                         }*/
                     }
