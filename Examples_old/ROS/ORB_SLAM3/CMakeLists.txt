@@ -39,7 +39,7 @@ if(NOT OpenCV_FOUND)
 endif()
 
 find_package(Eigen3 3.1.0 REQUIRED)
-find_package(Pangolin REQUIRED)
+find_package(Pangolin REQUIRED PATHS ${PROJECT_SOURCE_DIR}/Thirdparty/Pangolin/build/lib/cmake)
 
 include_directories(
 ${PROJECT_SOURCE_DIR}
