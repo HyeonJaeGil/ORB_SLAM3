@@ -417,11 +417,18 @@ void Frame::AssignFeaturesToGrid()
 
 void Frame::ExtractORB(int flag, const cv::Mat &im, const int x0, const int x1)
 {
+    // create mask of width 640 and height 512
+    cv::Mat mask = cv::Mat::ones(im.rows, im.cols, CV_8UC1) * 255;
+    // set the top row from 0 to 127 to 0
+    mask.rowRange(0, 127).setTo(0);
+    // set the bottom row from 384 to 511 to 0
+    mask.rowRange(384, 511).setTo(0);
+
     vector<int> vLapping = {x0,x1};
     if(flag==0)
-        monoLeft = (*mpORBextractorLeft)(im,cv::Mat(),mvKeys,mDescriptors,vLapping);
+        monoLeft = (*mpORBextractorLeft)(im,mask,mvKeys,mDescriptors,vLapping);  // masked feature detection
     else
-        monoRight = (*mpORBextractorRight)(im,cv::Mat(),mvKeysRight,mDescriptorsRight,vLapping);
+        monoRight = (*mpORBextractorRight)(im,mask,mvKeysRight,mDescriptorsRight,vLapping);
 }
 
 bool Frame::isSet() const {
