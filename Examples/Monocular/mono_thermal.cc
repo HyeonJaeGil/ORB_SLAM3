@@ -41,10 +41,18 @@ int main(int argc, char **argv)
     vector<string> img_filenames;
     vector<double> timestamps;
 
-    std::string imgs = "/home/hj/Dataset/STHEREO/07/image/thermal_14_left";
-    std::string times = "/home/hj/Dataset/STHEREO/07/image/timestamps.txt";
+    //Check settings file
+    cv::FileStorage fsSettings(settings_file.c_str(), cv::FileStorage::READ);
+    if(!fsSettings.isOpened())
+    {
+       cerr << "Failed to open settings file at: " << settings_file << endl;
+       exit(-1);
+    }
+    std::string images = fsSettings["Path.images"];
+    std::string times = fsSettings["Path.times"];
+    std::string save_file = fsSettings["Path.save_file"];
 
-    LoadImages(imgs, times, img_filenames, timestamps);
+    LoadImages(images, times, img_filenames, timestamps);
     cout << "LOADED!" << endl;
     const int nImages = img_filenames.size();
 
@@ -74,8 +82,8 @@ int main(int argc, char **argv)
         // Read image from file
         im = cv::imread(img_filenames[ni],cv::IMREAD_UNCHANGED); //,CV_LOAD_IMAGE_UNCHANGED);
         
-        // // normalize image into 8 bit with minmax value
-        normalizeMinMax(im);
+        // // // normalize image into 8 bit with minmax value
+        // normalizeMinMax(im);
         
         double tframe = timestamps[ni];
         // std::cout << "image: " << img_filenames[ni] <<  ", timestamp: " << tframe << std::endl;
@@ -126,8 +134,7 @@ int main(int argc, char **argv)
     SLAM.Shutdown();
 
     // Save camera trajectory
-    SLAM.SaveTrajectoryTUM("CameraTrajectory.txt");
-    SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+    SLAM.SaveKeyFrameTrajectoryTUM(save_file);
 
     return 0;
 }
@@ -137,8 +144,8 @@ void LoadImages(const string &strImagePath, const string &strPathTimes,
 {
     ifstream fTimes;
     fTimes.open(strPathTimes.c_str());
-    vTimeStamps.reserve(15000);
-    vstrImages.reserve(15000);
+    vTimeStamps.reserve(30000);
+    vstrImages.reserve(30000);
     while(!fTimes.eof())
     {
         string s;

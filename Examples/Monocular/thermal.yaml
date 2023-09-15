@@ -35,10 +35,13 @@ Camera.height: 512
 
 
 # Camera frames per second 
-Camera.fps: 20
+Camera.fps: 10
 
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
 Camera.RGB: 1
+
+
+loopClosing: 0
 
 #--------------------------------------------------------------------------------------------
 # ORB Parameters
@@ -74,3 +77,16 @@ Viewer.ViewpointY: -0.7
 Viewer.ViewpointZ: -1.8
 Viewer.ViewpointF: 500.0
 
+
+#--------------------------------------------------------------------------------------------
+# Path Parameters
+#---------------------------------------------------------------------------------------------
+
+# Path to images
+Path.images: "/home/hj/Dataset/STHEREO/07/image/minmax"
+
+# Path to timestamps
+Path.times: "/home/hj/Dataset/STHEREO/07/timestamp.txt"
+
+# Path to save the KeyFrameTrajectory
+Path.save_file: "07_noloop_KeyFrameTrajectory_minmax.txt"
