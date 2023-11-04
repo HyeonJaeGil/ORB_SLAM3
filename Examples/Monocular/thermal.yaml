@@ -33,6 +33,10 @@ Camera1.p2: 0.0
 Camera.width: 640
 Camera.height: 512
 
+Camera.widthValidStart: 0
+Camera.widthValidEnd: 640
+Camera.heightValidStart: 0
+Camera.heightValidEnd: 284
 
 # Camera frames per second 
 Camera.fps: 10

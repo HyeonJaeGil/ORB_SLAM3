@@ -56,6 +56,17 @@ int main(int argc, char **argv)
     cout << "LOADED!" << endl;
     const int nImages = img_filenames.size();
 
+    // create mask
+    int mask_height = fsSettings["Camera.height"];
+    int mask_width = fsSettings["Camera.width"];
+    int mask_valid_width_start = fsSettings["Camera.widthValidStart"];
+    int mask_valid_width_end = fsSettings["Camera.widthValidEnd"];
+    int mask_valid_height_start = fsSettings["Camera.heightValidStart"];
+    int mask_valid_height_end = fsSettings["Camera.heightValidEnd"];
+    cv::Mat mask = cv::Mat::zeros(fsSettings["Camera.height"], fsSettings["Camera.width"], CV_8UC1);
+    mask(cv::Rect(mask_valid_width_start, mask_valid_height_start, 
+                mask_valid_width_end-mask_valid_width_start, mask_valid_height_end-mask_valid_height_start)) = 255;
+    
     // Vector for tracking time statistics
     float tracking_times;
 
@@ -82,9 +93,6 @@ int main(int argc, char **argv)
         // Read image from file
         im = cv::imread(img_filenames[ni],cv::IMREAD_UNCHANGED); //,CV_LOAD_IMAGE_UNCHANGED);
         
-        // // // normalize image into 8 bit with minmax value
-        // normalizeMinMax(im);
-        
         double tframe = timestamps[ni];
         // std::cout << "image: " << img_filenames[ni] <<  ", timestamp: " << tframe << std::endl;
 
@@ -106,7 +114,7 @@ int main(int argc, char **argv)
 
         // Pass the image to the SLAM system
         // cout << "tframe = " << tframe << endl;
-        SLAM.TrackMonocular(im,tframe); // TODO change to monocular_inertial
+        SLAM.TrackMonocularMask(im,mask,tframe); // TODO change to monocular_inertial
 
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 

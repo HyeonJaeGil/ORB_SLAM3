@@ -382,6 +382,101 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
 }
 
 
+Frame::Frame(const cv::Mat &imGray, const cv::Mat &imMask, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, GeometricCamera* pCamera, cv::Mat &distCoef, const float &bf, const float &thDepth, Frame* pPrevF, const IMU::Calib &ImuCalib)
+    :mpcpi(NULL),mpORBvocabulary(voc),mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
+     mTimeStamp(timeStamp), mK(static_cast<Pinhole*>(pCamera)->toK()), mK_(static_cast<Pinhole*>(pCamera)->toK_()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
+     mImuCalib(ImuCalib), mpImuPreintegrated(NULL),mpPrevFrame(pPrevF),mpImuPreintegratedFrame(NULL), mpReferenceKF(static_cast<KeyFrame*>(NULL)), mbIsSet(false), mbImuPreintegrated(false), mpCamera(pCamera),
+     mpCamera2(nullptr), mbHasPose(false), mbHasVelocity(false)
+{
+    // Frame ID
+    mnId=nNextId++;
+
+    // Scale Level Info
+    mnScaleLevels = mpORBextractorLeft->GetLevels();
+    mfScaleFactor = mpORBextractorLeft->GetScaleFactor();
+    mfLogScaleFactor = log(mfScaleFactor);
+    mvScaleFactors = mpORBextractorLeft->GetScaleFactors();
+    mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();
+    mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
+    mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
+
+    // ORB extraction
+#ifdef REGISTER_TIMES
+    std::chrono::steady_clock::time_point time_StartExtORB = std::chrono::steady_clock::now();
+#endif
+    ExtractORBMasked(0,imGray,imMask,0,1000);
+#ifdef REGISTER_TIMES
+    std::chrono::steady_clock::time_point time_EndExtORB = std::chrono::steady_clock::now();
+
+    mTimeORB_Ext = std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(time_EndExtORB - time_StartExtORB).count();
+#endif
+
+
+    N = mvKeys.size();
+    if(mvKeys.empty())
+        return;
+
+    UndistortKeyPoints();
+
+    // Set no stereo information
+    mvuRight = vector<float>(N,-1);
+    mvDepth = vector<float>(N,-1);
+    mnCloseMPs = 0;
+
+    mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
+
+    mmProjectPoints.clear();// = map<long unsigned int, cv::Point2f>(N, static_cast<cv::Point2f>(NULL));
+    mmMatchedInImage.clear();
+
+    mvbOutlier = vector<bool>(N,false);
+
+    // This is done only for the first Frame (or after a change in the calibration)
+    if(mbInitialComputations)
+    {
+        ComputeImageBounds(imGray);
+
+        mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/static_cast<float>(mnMaxX-mnMinX);
+        mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/static_cast<float>(mnMaxY-mnMinY);
+
+        fx = static_cast<Pinhole*>(mpCamera)->toK().at<float>(0,0);
+        fy = static_cast<Pinhole*>(mpCamera)->toK().at<float>(1,1);
+        cx = static_cast<Pinhole*>(mpCamera)->toK().at<float>(0,2);
+        cy = static_cast<Pinhole*>(mpCamera)->toK().at<float>(1,2);
+        invfx = 1.0f/fx;
+        invfy = 1.0f/fy;
+
+        mbInitialComputations=false;
+    }
+
+
+    mb = mbf/fx;
+
+    //Set no stereo fisheye information
+    Nleft = -1;
+    Nright = -1;
+    mvLeftToRightMatch = vector<int>(0);
+    mvRightToLeftMatch = vector<int>(0);
+    mvStereo3Dpoints = vector<Eigen::Vector3f>(0);
+    monoLeft = -1;
+    monoRight = -1;
+
+    AssignFeaturesToGrid();
+
+    if(pPrevF)
+    {
+        if(pPrevF->HasVelocity())
+        {
+            SetVelocity(pPrevF->GetVelocity());
+        }
+    }
+    else
+    {
+        mVw.setZero();
+    }
+
+    mpMutexImu = new std::mutex();
+}
+
 void Frame::AssignFeaturesToGrid()
 {
     // Fill matrix with points
@@ -417,12 +512,7 @@ void Frame::AssignFeaturesToGrid()
 
 void Frame::ExtractORB(int flag, const cv::Mat &im, const int x0, const int x1)
 {
-    // create mask of width 640 and height 512
     cv::Mat mask = cv::Mat::ones(im.rows, im.cols, CV_8UC1) * 255;
-    // set the top row from 0 to 127 to 0
-    mask.rowRange(0, 127).setTo(0);
-    // set the bottom row from 384 to 511 to 0
-    mask.rowRange(384, 511).setTo(0);
 
     vector<int> vLapping = {x0,x1};
     if(flag==0)
@@ -430,6 +520,16 @@ void Frame::ExtractORB(int flag, const cv::Mat &im, const int x0, const int x1)
     else
         monoRight = (*mpORBextractorRight)(im,mask,mvKeysRight,mDescriptorsRight,vLapping);
 }
+
+void Frame::ExtractORBMasked(int flag, const cv::Mat &im, const cv::Mat &mask, const int x0, const int x1)
+{
+    vector<int> vLapping = {x0,x1};
+    if(flag==0)
+        monoLeft = (*mpORBextractorLeft)(im,mask,mvKeys,mDescriptors,vLapping);  // masked feature detection
+    else
+        monoRight = (*mpORBextractorRight)(im,mask,mvKeysRight,mDescriptorsRight,vLapping);
+}
+
 
 bool Frame::isSet() const {
     return mbIsSet;

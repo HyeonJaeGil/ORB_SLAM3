@@ -778,7 +778,7 @@ namespace ORB_SLAM3
         return vResultKeys;
     }
 
-    void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoints)
+    void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoints, cv::InputArray _mask)
     {
         allKeypoints.resize(nlevels);
 
@@ -801,12 +801,12 @@ namespace ORB_SLAM3
             const int nRows = height/W;
             const int wCell = ceil(width/nCols);
             const int hCell = ceil(height/nRows);
+            
+            float scale = mvScaleFactor[level];
+            cv::Mat mask = _mask.getMat();
 
             for(int i=0; i<nRows; i++)
             {
-                // skip the last 1 rows
-                if (i >= nRows - 1)
-                    continue;
 
                 const float iniY =minBorderY+i*hCell;
                 float maxY = iniY+hCell+6;
@@ -828,13 +828,6 @@ namespace ORB_SLAM3
                     vector<cv::KeyPoint> vKeysCell;
 
                     cv::Mat patches = mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX);
-                    // double min, max;
-                    // cv::minMaxLoc(patches, &min, &max);
-                    // double contrast_factor = 1.5;
-                    // int new_min = (int)(min/contrast_factor);
-                    // int new_max = contrast_factor * max < 255 ? (int)(contrast_factor * max) : 255;
-                    // cv::Mat patches_8U;
-                    // cv::normalize(patches, patches_8U, new_min, new_max, cv::NORM_MINMAX, CV_8UC1);
 
                     FAST(patches,
                          vKeysCell,iniThFAST,true);
@@ -877,7 +870,18 @@ namespace ORB_SLAM3
                         {
                             (*vit).pt.x+=j*wCell;
                             (*vit).pt.y+=i*hCell;
-                            vToDistributeKeys.push_back(*vit);
+                            if (mask.empty()){
+                                vToDistributeKeys.push_back(*vit);
+                            }
+                            else{
+                                int x = (int)std::round(scale*((*vit).pt.x + minBorderX));
+                                int y = (int)std::round(scale*((*vit).pt.y + minBorderY));
+                                // remove if outside mask
+                                cv::Scalar colour = mask.at<uchar>(cv::Point(x, y));
+                                if (colour[0] > 0) {
+                                    vToDistributeKeys.push_back(*vit);
+                                }
+                            }
                         }
                     }
 
@@ -1110,7 +1114,7 @@ namespace ORB_SLAM3
         ComputePyramid(image);
 
         vector < vector<KeyPoint> > allKeypoints;
-        ComputeKeyPointsOctTree(allKeypoints);
+        ComputeKeyPointsOctTree(allKeypoints, _mask);
         //ComputeKeyPointsOld(allKeypoints);
 
         Mat descriptors;
