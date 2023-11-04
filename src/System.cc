@@ -706,21 +706,24 @@ void System::SaveTrajectoryTUM(const string &filename)
 void System::SaveKeyFrameTrajectoryTUM(const string &filename)
 {
     cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
+    this->SaveKeyFrameTrajectoryTUM(filename, mpAtlas->GetCurrentMap());
+}
 
-    vector<KeyFrame*> vpKFs = mpAtlas->GetAllKeyFrames();
-    sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);
 
-    // Transform all keyframes so that the first keyframe is at the origin.
-    // After a loop closure the first keyframe might not be at the origin.
+void System::SaveKeyFrameTrajectoryTUM(const string &filename, Map* pMap)
+{
+    auto all_kfs = pMap->GetAllKeyFrames();
+    sort(all_kfs.begin(),all_kfs.end(),KeyFrame::lId);
+
     ofstream f;
     f.open(filename.c_str());
     f << fixed;
 
-    for(size_t i=0; i<vpKFs.size(); i++)
+    for(size_t i=0; i<all_kfs.size(); i++)
     {
-        KeyFrame* pKF = vpKFs[i];
+        KeyFrame* pKF = all_kfs[i];
 
-       // pKF->SetPose(pKF->GetPose()*Two);
+        // pKF->SetPose(pKF->GetPose()*Two);
 
         if(pKF->isBad())
             continue;
@@ -729,12 +732,51 @@ void System::SaveKeyFrameTrajectoryTUM(const string &filename)
         Eigen::Quaternionf q = Twc.unit_quaternion();
         Eigen::Vector3f t = Twc.translation();
         f << setprecision(6) << pKF->mTimeStamp << setprecision(7) << " " << t(0) << " " << t(1) << " " << t(2)
-          << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << endl;
-
+        << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << endl;
     }
 
     f.close();
 }
+
+
+void System::SaveAllKeyFrameTrajectoryTUM(const string &filename)
+{
+    cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
+
+    auto all_maps = mpAtlas->GetAllMaps();
+    // if only one map, save as usual
+    if (all_maps.size() == 1){
+        SaveKeyFrameTrajectoryTUM(filename);
+        return;
+    }
+
+    Map* pBiggestMap;
+    size_t biggest_map_size = std::numeric_limits<size_t>::min();
+    for(Map* map :all_maps)
+    {
+        if(map->GetAllKeyFrames().size() > biggest_map_size)
+        {
+            biggest_map_size = map->GetAllKeyFrames().size();
+            pBiggestMap = map;
+        }
+    }
+
+    // else, save all maps with different names (filename_1, filename_2, ...)
+    for (auto map : all_maps){
+        auto all_kfs = map->GetAllKeyFrames();
+        sort(all_kfs.begin(),all_kfs.end(),KeyFrame::lId);
+
+        // if current map is the biggest, save it with the original filename
+        if (map == pBiggestMap){
+            SaveKeyFrameTrajectoryTUM(filename, map);
+        }
+
+        // split extension of filename and add map id with underscore
+        string filename_new = filename.substr(0, filename.find_last_of(".")) + "_" + to_string(map->GetId()) + filename.substr(filename.find_last_of("."));
+        SaveKeyFrameTrajectoryTUM(filename_new, map);
+    }
+}
+
 
 void System::SaveTrajectoryEuRoC(const string &filename)
 {

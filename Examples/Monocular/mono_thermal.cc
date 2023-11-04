@@ -142,7 +142,8 @@ int main(int argc, char **argv)
     SLAM.Shutdown();
 
     // Save camera trajectory
-    SLAM.SaveKeyFrameTrajectoryTUM(save_file);
+    // SLAM.SaveKeyFrameTrajectoryTUM(save_file);
+    SLAM.SaveAllKeyFrameTrajectoryTUM(save_file);
 
     return 0;
 }
